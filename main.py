@@ -1,19 +1,17 @@
 # main.py
-# redeploy trigger
-
 from flask import Flask, request, jsonify
 from app.telegram_handler import handle_update
 from app.config import TELEGRAM_TOKEN
 from app.telegram_handler import logger
-from app.db import initialize_database  # 👈 Initialiser la DB
+from app.db import initialize_database
 import os
 import requests
 
 app = Flask(__name__)
 
-# 🚀 Fonction pour configurer automatiquement le webhook
+# Configure automatiquement le webhook
 def setup_webhook():
-    BASE_URL = os.getenv("RENDER_EXTERNAL_URL", "https://chefbot-dz.onrender.com")
+    BASE_URL = os.getenv("RENDER_EXTERNAL_URL", "https://chefbotdz.onrender.com")
     WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "chefbotsecret")
     webhook_url = f"{BASE_URL}/webhook"
     set_webhook_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/setWebhook"
@@ -32,6 +30,7 @@ def setup_webhook():
     except Exception as e:
         logger.error(f"❌ Exception lors de la configuration Webhook: {str(e)}")
 
+# Déclare le endpoint
 @app.route("/webhook", methods=["POST"])
 def webhook():
     update = request.get_json()
@@ -43,10 +42,13 @@ def webhook():
         "details": result
     })
 
+# Ces lignes sont désormais toujours exécutées (local ou Render)
+initialize_database()
+setup_webhook()
+
 if __name__ == "__main__":
-    initialize_database()  # 👈 On initialise la base
-    setup_webhook()        # 👈 On configure le webhook Telegram
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
 
 
 # app/config.py
