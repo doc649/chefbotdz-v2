@@ -1,4 +1,5 @@
 # main.py
+
 from flask import Flask, request, jsonify
 from app.telegram_handler import handle_update
 from app.config import TELEGRAM_TOKEN
@@ -9,7 +10,7 @@ import requests
 
 app = Flask(__name__)
 
-# Configure automatiquement le webhook
+# Configure automatiquement le webhook (désactivé par défaut)
 def setup_webhook():
     BASE_URL = os.getenv("RENDER_EXTERNAL_URL", "https://chefbotdz.onrender.com")
     WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "chefbotsecret")
@@ -30,7 +31,7 @@ def setup_webhook():
     except Exception as e:
         logger.error(f"❌ Exception lors de la configuration Webhook: {str(e)}")
 
-# Déclare le endpoint
+# Déclare le endpoint de réception
 @app.route("/webhook", methods=["POST"])
 def webhook():
     update = request.get_json()
@@ -42,11 +43,14 @@ def webhook():
         "details": result
     })
 
-# Ces lignes sont désormais toujours exécutées (local ou Render)
-initialize_database()
-setup_webhook()
-
+# Bloc exécuté uniquement en local (ou via script manuel)
 if __name__ == "__main__":
+    initialize_database()
+
+    # ⚠️ Active le webhook seulement si tu le veux (local ou test)
+    if os.getenv("AUTO_WEBHOOK", "false").lower() == "true":
+        setup_webhook()
+
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
 
