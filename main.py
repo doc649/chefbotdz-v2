@@ -10,9 +10,8 @@ import requests
 
 app = Flask(__name__)
 
-# Configuration du webhook au démarrage
 def setup_webhook():
-    BASE_URL = os.getenv("RENDER_EXTERNAL_URL", "https://chefbotdz.onrender.com")
+    BASE_URL = os.getenv("RENDER_EXTERNAL_URL", "https://chefbotdz-v2.onrender.com")
     WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "chefbotsecret")
     webhook_url = f"{BASE_URL}/webhook"
     set_webhook_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/setWebhook"
@@ -31,25 +30,12 @@ def setup_webhook():
     except Exception as e:
         logger.error(f"❌ Exception lors de la configuration Webhook: {str(e)}")
 
-# Initialisation au démarrage de l'application
-@app.before_first_request
-def initialize():
-    try:
-        logger.info("🚀 Initialisation de l'application...")
-        initialize_database()
+# Initialisation forcée (Render ignore le bloc __main__)
+initialize_database()
 
-        # Configuration du webhook
-        if os.getenv("AUTO_WEBHOOK", "true").lower() == "true":
-            setup_webhook()
-    except Exception as e:
-        logger.error(f"❌ Erreur lors de l'initialisation: {str(e)}")
+if os.getenv("AUTO_WEBHOOK", "true").lower() == "true":
+    setup_webhook()
 
-# Route de santé pour vérifier que l'application fonctionne
-@app.route("/health", methods=["GET"])
-def health():
-    return jsonify({"status": "ok"}), 200
-
-# Déclare le endpoint de réception
 @app.route("/webhook", methods=["POST"])
 def webhook():
     try:
@@ -57,20 +43,16 @@ def webhook():
         logger.info(f"🔔 Webhook reçu")
         return handle_update(update)
     except Exception as e:
-        logger.error(f"❌ Erreur webhook: {str(e)}")
+        logger.error(f"❌ Erreur dans la route webhook: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# Bloc exécuté uniquement en local (ou via script manuel)
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"}), 200
+
 if __name__ == "__main__":
-    # Initialisation immédiate en mode local
-    initialize_database()
-
-    # Activer le webhook en local si nécessaire
-    if os.getenv("AUTO_WEBHOOK", "false").lower() == "true":
-        setup_webhook()
-
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=port)
 
 
 # app/config.py
