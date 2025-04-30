@@ -1,5 +1,3 @@
-# app/recipe_generator.py
-
 """
 Module pour générer des suggestions de recettes algériennes personnalisées
 basées sur des ingrédients donnés. Retourne 1 à 3 options.
@@ -34,9 +32,12 @@ def generate_recipes(user_ingredients_text: str) -> list:
     Returns:
         list: Liste de 1 à 3 recettes courtes prêtes à être proposées.
     """
-    logger.info(f"🧠 Génération de suggestions de recettes pour: {user_ingredients_text}")
+    logger.info(f"🎯 Appel GPT-4 pour : {user_ingredients_text}")
 
-    # Prompt blindé DZ
+    if not user_ingredients_text or len(user_ingredients_text.strip()) < 2:
+        return ["❌ المكونات غير واضحة. أعد المحاولة."]
+
+    # Prompt personnalisé ChefBotDZ
     prompt = f"""
 أنت ChefBotDZ، طباخ جزائري ذكي.
 
@@ -62,12 +63,12 @@ def generate_recipes(user_ingredients_text: str) -> list:
             temperature=0.5,
         )
         raw_text = response.choices[0].message.content.strip()
-        logger.info("✅ Suggestions de recettes générées avec succès")
+        logger.info(f"✅ Réponse brute GPT : {raw_text}")
 
-        # Découper la réponse en 1-3 recettes
+        # Découper proprement la réponse
         suggestions = [line.strip() for line in raw_text.split('\n') if line.strip()]
-        return suggestions[:3]  # Prendre maximum 3 recettes
+        return suggestions[:3] if suggestions else ["❌ ماقدرت نلقا وصفة."]
 
     except Exception as e:
-        logger.error(f"🚨 Erreur lors de la génération de suggestions: {e}", exc_info=True)
+        logger.error(f"🚨 Erreur GPT : {e}", exc_info=True)
         return ["❌ خطأ وقع أثناء توليد الوصفة، حاول مرة أخرى."]
