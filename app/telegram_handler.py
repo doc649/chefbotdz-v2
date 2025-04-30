@@ -1,12 +1,15 @@
-# app/telegram_handler.py
-
 import requests
 import json
 from flask import jsonify
 from app.openai_services import process_text, process_image
 from app.config import TELEGRAM_TOKEN
-from app.db import add_user, get_user, increment_user_recipe_count, save_pending_recipes, get_pending_recipes, delete_pending_recipes
-from app.recipe_generator import generate_recipes  # À ajuster si besoin
+from app.db import (
+    add_user, get_user,
+    increment_user_recipe_count,
+    save_pending_recipes,
+    get_pending_recipes,
+    delete_pending_recipes
+)
 import logging
 
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
@@ -24,7 +27,7 @@ def handle_update(update):
         return jsonify({"status": "no_message"})
 
     message = update["message"]
-    chat_id = str(message["chat"]["id"])  # toujours en string pour la DB
+    chat_id = str(message["chat"]["id"])  # Toujours en string pour la DB
 
     # 1️⃣ Enregistrer l'utilisateur s'il est nouveau
     add_user(chat_id)
@@ -59,14 +62,15 @@ def handle_update(update):
             return jsonify({"status": "limit_reached"})
 
         # 4️⃣ Générer 1-3 recettes possibles
-        recipe_options = generate_recipes(user_text)  # retourne une liste de 1-3 recettes
+        recipe_options = process_text(user_text)
 
         if isinstance(recipe_options, list) and len(recipe_options) > 1:
-            options_text = "\n".join([f"{i+1}. {recipe}" for i, recipe in enumerate(recipe_options)])
+            options_text = "\n".join([f"{i+1}. {r}" for i, r in enumerate(recipe_options)])
             send_message(chat_id, f"🧑‍🍳 هاك بعض الاقتراحات:\n{options_text}\n\n📥 رد عليا بالرقم تاع الوصفة لي تحبها (1 أو 2 أو 3).")
             save_pending_recipes(chat_id, json.dumps(recipe_options))
         else:
-            send_message(chat_id, recipe_options[0])
+            response = recipe_options[0] if isinstance(recipe_options, list) else recipe_options
+            send_message(chat_id, response)
 
         # 5️⃣ Incrémenter le compteur si utilisateur Freemium
         if not user["is_premium"]:
@@ -75,19 +79,19 @@ def handle_update(update):
         return jsonify({"status": "ok"})
 
     elif "photo" in message:
-        file_id = message["photo"][-1]["file_id"]  # meilleure qualité
+        file_id = message["photo"][-1]["file_id"]  # Meilleure qualité
         ingredients = process_image(file_id)
 
-        recipe_options = generate_recipes(ingredients)
+        recipe_options = ingredients  # Peut être list ou str
 
         if isinstance(recipe_options, list) and len(recipe_options) > 1:
-            options_text = "\n".join([f"{i+1}. {recipe}" for i, recipe in enumerate(recipe_options)])
+            options_text = "\n".join([f"{i+1}. {r}" for i, r in enumerate(recipe_options)])
             send_message(chat_id, f"🧑‍🍳 هاك بعض الاقتراحات:\n{options_text}\n\n📥 رد عليا بالرقم تاع الوصفة لي تحبها (1 أو 2 أو 3).")
             save_pending_recipes(chat_id, json.dumps(recipe_options))
         else:
-            send_message(chat_id, recipe_options[0])
+            response = recipe_options[0] if isinstance(recipe_options, list) else recipe_options
+            send_message(chat_id, response)
 
-        # 5️⃣ Incrémenter le compteur si utilisateur Freemium
         if not user["is_premium"]:
             increment_user_recipe_count(chat_id)
 
