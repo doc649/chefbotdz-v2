@@ -10,7 +10,7 @@ import requests
 
 app = Flask(__name__)
 
-# Configure automatiquement le webhook (désactivé par défaut)
+# Configuration du webhook au démarrage
 def setup_webhook():
     BASE_URL = os.getenv("RENDER_EXTERNAL_URL", "https://chefbotdz.onrender.com")
     WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "chefbotsecret")
@@ -31,24 +31,46 @@ def setup_webhook():
     except Exception as e:
         logger.error(f"❌ Exception lors de la configuration Webhook: {str(e)}")
 
+# Initialisation au démarrage de l'application
+@app.before_first_request
+def initialize():
+    try:
+        logger.info("🚀 Initialisation de l'application...")
+        initialize_database()
+
+        # Configuration du webhook
+        if os.getenv("AUTO_WEBHOOK", "true").lower() == "true":
+            setup_webhook()
+    except Exception as e:
+        logger.error(f"❌ Erreur lors de l'initialisation: {str(e)}")
+
+# Route de santé pour vérifier que l'application fonctionne
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"}), 200
+
 # Déclare le endpoint de réception
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    update = request.get_json()
-    logger.info(f"🔔 Webhook reçu: {update}")
-    handle_update(update)  # On appelle le handler sans retourner de JSON complexe
-    return "OK", 200
+    try:
+        update = request.get_json()
+        logger.info(f"🔔 Webhook reçu")
+        return handle_update(update)
+    except Exception as e:
+        logger.error(f"❌ Erreur webhook: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 # Bloc exécuté uniquement en local (ou via script manuel)
 if __name__ == "__main__":
+    # Initialisation immédiate en mode local
     initialize_database()
 
-    # ⚠️ Active le webhook seulement si tu le veux (local ou test)
+    # Activer le webhook en local si nécessaire
     if os.getenv("AUTO_WEBHOOK", "false").lower() == "true":
         setup_webhook()
 
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=True)
 
 
 # app/config.py
