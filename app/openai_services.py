@@ -35,22 +35,28 @@ def generate_help_message() -> str:
         "🔎 إذا حاب تعرف أكثر، أرسل: aide / help"
     )
 
-def process_text(text: str) -> str:
+def process_text(text: str) -> list:
     """
     Analyse la commande utilisateur et agit en fonction du besoin.
+    Retourne toujours une liste de réponses.
     """
-    lower_text = text.lower()
+    lower_text = text.lower().strip()
+
+    if not lower_text or len(lower_text) < 2:
+        return ["❗ أرسل مكونات أو اطلب خدمة (help, plan repas...)"]
 
     if "plan repas" in lower_text or "planning" in lower_text:
-        return generate_meal_plan()
+        return [generate_meal_plan()]
     elif "courses" in lower_text or "shopping" in lower_text or "liste" in lower_text:
-        return generate_shopping_list(text)
+        return [generate_shopping_list(text)]
     elif "calorie" in lower_text or "nutrition" in lower_text:
-        return estimate_calories(text)
+        return [estimate_calories(text)]
     elif "help" in lower_text or "aide" in lower_text or "/help" in lower_text:
-        return generate_help_message()
+        return [generate_help_message()]
     else:
-        return generate_recipes(text)
+        # Demande classique : ingrédients ➝ recettes
+        raw = generate_recipes(text)
+        return raw if isinstance(raw, list) else [raw]
 
 def process_image(file_id: str) -> str:
     """
