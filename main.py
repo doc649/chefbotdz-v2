@@ -1,9 +1,6 @@
-# main.py
-
 from flask import Flask, request, jsonify
-from app.telegram_handler import handle_update
+from app.telegram_handler import handle_update, logger
 from app.config import TELEGRAM_TOKEN
-from app.telegram_handler import logger
 from app.db import initialize_database
 import os
 import requests
@@ -11,7 +8,8 @@ import requests
 app = Flask(__name__)
 
 def setup_webhook():
-    BASE_URL = os.getenv("RENDER_EXTERNAL_URL", "https://chefbotdz-v2.onrender.com")
+    # URL fixe de ton Render (pas de dépendance à RENDER_EXTERNAL_URL)
+    BASE_URL = "https://chefbotdz-v2.onrender.com"
     WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "chefbotsecret")
     webhook_url = f"{BASE_URL}/webhook"
     set_webhook_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/setWebhook"
@@ -24,13 +22,13 @@ def setup_webhook():
     try:
         response = requests.post(set_webhook_url, json=payload)
         if response.status_code == 200:
-            logger.info("✅ Webhook Telegram configuré avec succès !")
+            logger.info(f"✅ Webhook Telegram configuré avec succès : {webhook_url}")
         else:
             logger.error(f"❌ Erreur configuration Webhook : {response.text}")
     except Exception as e:
         logger.error(f"❌ Exception lors de la configuration Webhook: {str(e)}")
 
-# Initialisation forcée (Render ignore le bloc __main__)
+# Initialisation forcée même en mode Gunicorn (Render)
 initialize_database()
 
 if os.getenv("AUTO_WEBHOOK", "true").lower() == "true":
@@ -40,7 +38,7 @@ if os.getenv("AUTO_WEBHOOK", "true").lower() == "true":
 def webhook():
     try:
         update = request.get_json()
-        logger.info(f"🔔 Webhook reçu")
+        logger.info("🔔 Webhook reçu")
         return handle_update(update)
     except Exception as e:
         logger.error(f"❌ Erreur dans la route webhook: {str(e)}")
