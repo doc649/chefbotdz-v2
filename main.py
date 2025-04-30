@@ -36,12 +36,8 @@ def setup_webhook():
 def webhook():
     update = request.get_json()
     logger.info(f"🔔 Webhook reçu: {update}")
-    result = handle_update(update)
-    return jsonify({
-        "status": "success",
-        "processed": True,
-        "details": result
-    })
+    handle_update(update)  # On appelle le handler sans retourner de JSON complexe
+    return "OK", 200
 
 # Bloc exécuté uniquement en local (ou via script manuel)
 if __name__ == "__main__":
